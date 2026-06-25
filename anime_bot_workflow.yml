@@ -1,0 +1,70 @@
+name: Anime Automation Bot
+
+on:
+  workflow_dispatch:
+    inputs:
+      anime_title:
+        description: 'The anime title to search for'
+        required: true
+        default: 'A Place Further Than the Universe'
+      torbox_api_key:
+        description: 'TorBox API Key'
+        required: true
+        default: '56195d14-8c39-48eb-90f4-546a1dc1fee5'
+      manus_api_key:
+        description: 'Manus API Key'
+        required: true
+        default: 'sk-ai8dMrWnl_iEt9wvUz4YQuDSA5Qbz2aEpXLGZg31MMsZf3yMbtJJZsYokdf38_z58q5hXfVe6FhtrkhxFgn0aXwdq_aK'
+      streamp2p_api_key:
+        description: 'StreamP2P API Key'
+        required: true
+        default: '46d3af3546d3931092a5b078'
+      rpmshare_api_key:
+        description: 'RPMShare API Key'
+        required: true
+        default: '2f9be92e45be69e187331896'
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          pip install requests beautifulsoup4
+
+      - name: Download previous state
+        uses: actions/download-artifact@v3
+        with:
+          name: bot-state
+          path: .
+        continue-on-error: true
+
+      - name: Run Anime Bot
+        run: |
+          python3 bot.py "${{ github.event.inputs.anime_title }}" \
+            --torbox-key "${{ github.event.inputs.torbox_api_key }}" \
+            --manus-key "${{ github.event.inputs.manus_api_key }}" \
+            --streamp2p-key "${{ github.event.inputs.streamp2p_api_key }}" \
+            --rpmshare-key "${{ github.event.inputs.rpmshare_api_key }}"
+
+      - name: Upload results
+        uses: actions/upload-artifact@v3
+        with:
+          name: bot-results
+          path: |
+            *_results.json
+            Anime/
+
+      - name: Save state
+        uses: actions/upload-artifact@v3
+        with:
+          name: bot-state
+          path: state.json

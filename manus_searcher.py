@@ -10,8 +10,8 @@ class ManusSearcher:
 
     def find_best_batch(self, anime_title):
         prompt = (
-            f"Search Nyaa.si and other reliable sources for the absolute best high-quality batch release of '{anime_title}'. "
-            "Prioritize 1080p, Blu-ray (BD) quality, and complete series batches. "
+            f"Search Nyaa.si and other reliable sources for the absolute best high-quality  releases of '{anime_title}'. "
+            "Prioritize 1080p, Blu-ray (BD) quality, and complete series batches and if there is no batches Gather select episodes research and find out what the series has like if they have x numbe episodes movie names ovs etc once done with that search on nyaa.si for the magnet links make sure no duplicates are added please and thank you very much. "
             "Identify if it includes Movies, OVAs, or Specials. "
             "Return the result in structured JSON format with 'title', 'magnet_link', 'size', and 'content_type' (e.g., 'Series Batch')."
         )

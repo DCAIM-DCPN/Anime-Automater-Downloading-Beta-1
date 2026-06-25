@@ -90,26 +90,62 @@ class AnimeBot:
 
         torrent_identifier = self.ai_verifier.generate_file_identifier(anime_title, best_torrent["title"], best_torrent["size"])
         if self.ai_verifier.is_duplicate(torrent_identifier):
-            print(f"[!] Torrent for \'{anime_title}\' (\'{best_torrent["title"]}\') already processed. Skipping.")
+            print(f"[!] Torrent for '{anime_title}' ('{best_torrent['title']}') already processed. Skipping.")
             return
 
-        print(f"[*] Selected: {best_torrent["title"]} ({best_torrent["size"]})")
+        print(f"[*] Selected: {best_torrent['title']} ({best_torrent['size']})")
         print(f"[*] Adding to TorBox...")
+        print(f"[*] Magnet Link: {best_torrent['magnet_link'][:50]}...")
         
+        # Check if already cached to speed things up
+        print(f"[*] Checking if torrent is cached on TorBox...")
+        cache_check = self.client.check_cached(best_torrent["magnet_link"])
+        if cache_check and cache_check.get("success") and cache_check.get("data"):
+            print("[*] Torrent is cached! Adding will be instantaneous.")
+
         add_response = self.client.add_torrent(best_torrent["magnet_link"])
         if not add_response.get("success"):
-            print(f"[!] Error adding torrent: {add_response.get("detail")}")
-            return
+            # Check if it's a duplicate item error, which is fine
+            if add_response.get("error") == "DUPLICATE_ITEM":
+                print("[*] Torrent already exists in your TorBox list.")
+                # We need to find the ID from the list
+                mylist = self.client.headers # This is just a placeholder, actual logic below
+            else:
+                print(f"[!] Error adding torrent: {add_response.get('detail')} (Code: {add_response.get('error')})")
+                return
         
+        torrent_id = None
+        if add_response.get("success"):
+            torrent_id = add_response["data"].get("torrent_id")
+        
+        # If still no ID (e.g. duplicate), try to find it in mylist
+        if not torrent_id:
+            print("[*] Searching for existing torrent ID in your list...")
+            url = f"{self.client.BASE_URL}/torrents/mylist"
+            import requests
+            resp = requests.get(url, headers=self.client.headers)
+            if resp.status_code == 200:
+                data = resp.json()
+                if data.get("success"):
+                    # Match by magnet or hash if possible, or just take the most recent one with similar name
+                    for t in data.get("data", []):
+                        # Torbox doesn't always return magnet in mylist, but we can try to match by name or hash
+                        if t.get("name") in best_torrent["title"] or best_torrent["title"] in t.get("name"):
+                            torrent_id = t.get("id")
+                            break
+        
+        if not torrent_id:
+            print("[!] Could not determine torrent ID.")
+            return
+
         self.state_manager.add_processed_torrent({
-            "torrent_id": add_response["data"].get("torrent_id"),
+            "torrent_id": torrent_id,
             "anime_title": anime_title,
             "magnet_link": best_torrent["magnet_link"],
             "status": "pending"
         })
 
-        torrent_id = add_response['data'].get('torrent_id')
-        print(f"[*] Torrent added successfully. ID: {torrent_id}")
+        print(f"[*] Torrent ID confirmed: {torrent_id}")
 
         print("[*] Waiting for download to complete...")
         while True:
